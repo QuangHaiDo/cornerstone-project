@@ -1,0 +1,215 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <!-- twitter bootstrap CSS stylesheet - included to make things pretty, not needed or used by cornerstone -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link href="../css/cornerstone.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="page-header">
+        <h1>Displaying a DICOM P10 image using Cornerstone</h1>
+    </div>
+   
+    <div id="loadProgress">Image Load Progress:</div>
+
+    <div class="row">
+        <form id="form" class="form-horizontal">
+            <div class="form-group">
+                <label class="control-label col-sm-1" for="wadoURL">URL</label>
+                <div class="col-sm-8">
+                    <input class="form-control" type="text" id="wadoURL" placeholder="Enter WADO URL" value="https://raw.githubusercontent.com/cornerstonejs/cornerstoneWADOImageLoader/master/testImages/CT2_J2KR">
+                </div>
+                <div class="col-sm-3">
+                    <button class="form-control" type="button" id="downloadAndView" class="btn btn-primary">Download and View</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-2">
+                    <button class="form-control" type="button" id="load" class="btn btn-primary">Choose file (*Undone) </button>
+                </div>
+                <div class="col-sm-2">
+                    <button class="form-control" type="button" id="unload" class="btn btn-primary">Unload</button>
+                </div>
+                <div class="col-sm-2">
+                    <button class="form-control" type="button" id="purge" class="btn btn-primary">Purge Cache</button>
+                </div>
+            </div>
+        </form>
+    </div>
+        <input type="checkbox" id="toggleModalityLUT">Apply Modality LUT</input>
+        <input type="checkbox" id="toggleVOILUT">Apply VOI LUT</input>
+    <br>
+    <div class="row">
+        <div class="col-md-6">
+            <div style="width:512px;height:512px;position:relative;color: white;display:inline-block;border-style:solid;border-color:black;"
+                 oncontextmenu="return false"
+                 class='disable-selection noIbar'
+                 unselectable='on'
+                 onselectstart='return false;'
+                 onmousedown='return false;'>
+                <div id="dicomImage"
+                     style="width:512px;height:512px;top:0px;left:0px; position:absolute">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <!-- ADD NEW FEATURE HEAR ( BUTTON FOR FLIP,RESET,...-->
+            <button id="reset" class="btn btn-default">Reset</button>
+            <button id="hflip" class="btn btn-default">Horizontal Flip</button> 
+            <button id="vflip" class="btn btn-default">Vertical Flip</button>
+            <button id="rotate" class="btn btn-default">Rotate 90</button>
+            <br>
+            <br>
+            <div>
+                Instruction
+                <ul>
+                    <li>Left click drag - window/level</li>
+                    <li>Middle Mouse button drag - pan</li>
+                    <li>Right click drag - zoom</li>
+                    <li>Mouse wheel - scroll images</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+
+<!-- include the cornerstone library -->
+<script src="../javascript/cornerstone.min.js"></script>
+<SCRIPT src="../javascript/cornerstoneMath.min.js"></SCRIPT>
+<SCRIPT src="../javascript/cornerstoneTools.min.js"></SCRIPT>
+
+<!-- include the dicomParser library as the WADO image loader depends on it -->
+<script src="../dicomParser.min.js"></script>
+
+<!-- include the cornerstoneWADOImageLoader library -->
+<script src="../javascript/cornerstoneWADOImageLoader.js"></script>
+
+<script src="../dicomfile/uids.js"></script>
+
+<!-- Lines ONLY required for this example to run without building the project -->
+<script>window.cornerstoneWADOImageLoader || document.write('<script src="https://unpkg.com/cornerstone-wado-image-loader">\x3C/script>')</script>
+<script src="../utils/initializeWebWorkers.js"></script>
+
+<script>
+    cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+    cornerstoneWADOImageLoader.configure({
+        beforeSend: function(xhr) {
+            // Add custom headers here (e.g. auth tokens)
+            //xhr.setRequestHeader('APIKEY', 'my auth token');
+        }
+    });
+    var loaded = false;
+    function loadAndViewImage(imageId) {
+        var element = document.getElementById('dicomImage');
+        try {
+            var start = new Date().getTime();
+            cornerstone.loadAndCacheImage(imageId).then(function(image) {
+                console.log(image);
+                var viewport = cornerstone.getDefaultViewportForImage(element, image);
+                document.getElementById('toggleModalityLUT').checked = (viewport.modalityLUT !== undefined);
+                document.getElementById('toggleVOILUT').checked = (viewport.voiLUT !== undefined);
+                cornerstone.displayImage(element, image, viewport);
+                if(loaded === false) {
+                    cornerstoneTools.mouseInput.enable(element);
+                    cornerstoneTools.mouseWheelInput.enable(element);
+                    cornerstoneTools.wwwc.activate(element, 1); // ww/wc is the default tool for left mouse button
+                    cornerstoneTools.pan.activate(element, 2); // pan is the default tool for middle mouse button
+                    cornerstoneTools.zoom.activate(element, 4); // zoom is the default tool for right mouse button
+                    cornerstoneTools.zoomWheel.activate(element); // zoom is the default tool for middle mouse wheel
+                    loaded = true;
+                }
+            }, function(err) {
+                alert(err);
+            });
+        }
+        catch(err) {
+            alert(err);
+        }
+    }
+    function downloadAndView() {
+        let url = document.getElementById('wadoURL').value;
+        // prefix the url with wadouri: so cornerstone can find the image loader
+        url = "wadouri:" + url;
+        // image enable the dicomImage element and activate a few tools
+        loadAndViewImage(url);
+    }
+    cornerstone.events.addEventListener('cornerstoneimageloadprogress', function(event) {
+        const eventData = event.detail;
+        const loadProgress = document.getElementById('loadProgress');
+        loadProgress.textContent = `Image Load Progress: ${eventData.percentComplete}%`;
+    });
+    function getUrlWithoutFrame() {
+        var url = document.getElementById('wadoURL').value;
+        var frameIndex = url.indexOf('frame=');
+        if(frameIndex !== -1) {
+            url = url.substr(0, frameIndex-1);
+        }
+        return url;
+    }
+    var element = document.getElementById('dicomImage');
+    cornerstone.enable(element);
+    document.getElementById('downloadAndView').addEventListener('click', function(e) {
+        downloadAndView();
+    });
+    document.getElementById('load').addEventListener('click', function(e) {
+        var url = getUrlWithoutFrame();
+        cornerstoneWADOImageLoader.wadouri.dataSetCacheManager.load(url);
+    });
+    document.getElementById('unload').addEventListener('click', function(e) {
+        var url = getUrlWithoutFrame();
+        cornerstoneWADOImageLoader.wadouri.dataSetCacheManager.unload(url);
+    });
+    document.getElementById('purge').addEventListener('click', function(e) {
+        cornerstone.imageCache.purgeCache();
+    });
+    const form = document.getElementById('form');
+    form.addEventListener('submit', function() {
+        downloadAndView();
+        return false;
+    });
+    document.getElementById('reset').addEventListener('click', function (e) {
+        cornerstone.reset(element);
+    });
+
+    document.getElementById("hflip").addEventListener("click",function(e) {
+        const viewport = cornerstone.getViewport(element);
+        viewport.hflip = !viewport.hflip;
+        cornerstone.setViewport(element, viewport);
+    });
+
+    document.getElementById("vflip").addEventListener("click",function(e) {
+        const viewport = cornerstone.getViewport(element);
+        viewport.vflip = !viewport.vflip;
+        cornerstone.setViewport(element, viewport);
+    });
+
+    document.getElementById('rotate').addEventListener('click', function (e) {
+        const viewport = cornerstone.getViewport(element);
+        viewport.rotation += 90;
+        cornerstone.setViewport(element, viewport);
+    });
+
+    const mouseWheelEvents = ['mousewheel', 'DOMMouseScroll'];
+    mouseWheelEvents.forEach(function(eventType) {
+      element.addEventListener(eventType, function (e) {
+        // Firefox e.detail > 0 scroll back, < 0 scroll forward
+        // chrome/safari e.wheelDelta < 0 scroll back, > 0 scroll forward
+        if(document.getElementById("zoom").checked) {
+            let viewport = cornerstone.getViewport(element);
+            if (e.wheelDelta < 0 || e.detail > 0) {
+                if(viewport.scale>0.3) viewport.scale -= 0.25;
+            } else {
+                if(viewport.scale<20) viewport.scale += 0.25;
+            }
+            cornerstone.setViewport(element, viewport);
+        }
+        return false;
+      });
+    });
+    
+</script>
+</html>
