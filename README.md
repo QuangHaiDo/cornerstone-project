@@ -8,4 +8,4 @@ Danh sách thành viên:
 * Trần Minh Trí
 * Trần Xuân Thành
 * Hoàng Văn Thắng
-## Xem trang tại [Đây](https://quanghaido.github.io/cornerstone-project/docs/loadImageFromWeb.html)
+## Xem trang tại [Đây](https://quanghaido.github.io/cornerstone-project/docs/)
