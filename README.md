@@ -8,4 +8,5 @@ Danh sách thành viên:
 * Trần Minh Trí
 * Trần Xuân Thành
 * Hoàng Văn Thắng
+Báo cáo dự án: [Báo cáo](https://drive.google.com/file/d/15iuj23wob11ZygSwOsqeaLJHJN3zir4_/view?usp=sharing)
 ## Xem trang tại [Đây](https://quanghaido.github.io/cornerstone-project/src/)
